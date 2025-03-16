@@ -6,6 +6,7 @@ import ChannelList from "@/components/telegram/ChannelList";
 import ForwardingRules from "@/components/telegram/ForwardingRules";
 import MessageProcessor from "@/components/telegram/MessageProcessor";
 import ProcessingHistory from "@/components/telegram/ProcessingHistory";
+import Settings from "@/components/telegram/Settings";
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
@@ -20,11 +21,12 @@ const Dashboard: React.FC = () => {
       </div>
       
       <Tabs defaultValue="channels" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 mb-8">
+        <TabsList className="grid grid-cols-5 mb-8">
           <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="rules">Forwarding Rules</TabsTrigger>
           <TabsTrigger value="processor">Message Processor</TabsTrigger>
           <TabsTrigger value="history">Processing History</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         
         <TabsContent value="channels" className="mt-4">
@@ -41,6 +43,10 @@ const Dashboard: React.FC = () => {
         
         <TabsContent value="history" className="mt-4">
           <ProcessingHistory />
+        </TabsContent>
+        
+        <TabsContent value="settings" className="mt-4">
+          <Settings />
         </TabsContent>
       </Tabs>
       
