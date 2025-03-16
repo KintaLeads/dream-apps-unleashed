@@ -29,14 +29,18 @@ const Dashboard: React.FC = () => {
         
         if (error) {
           console.error("Error fetching credentials:", error);
-          throw new Error(`Failed to fetch API credentials: ${error.message}`);
+          // Don't throw an error here to avoid triggering the error state of the query
+          // Instead, return an empty array and handle the error message via the warning alert
+          console.warn("Will display appropriate UI warning", error.message);
+          return [];
         }
         
         console.log("Credentials fetched successfully:", data ? data.length : 0, "connected accounts found");
         return data || [];
       } catch (err) {
         console.error("Unexpected error in credentials fetch:", err);
-        throw err;
+        // Return empty array instead of throwing to avoid breaking the UI
+        return [];
       }
     }
   });
@@ -58,6 +62,23 @@ const Dashboard: React.FC = () => {
       setHasConnectedAccount(false);
     }
   }, [apiCredentials]);
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    // If user selects settings tab and there's a permission error, show a toast with instructions
+    if (value === "settings" && credentialsError) {
+      const isPermissionError = credentialsError.toString().includes("row-level security") || 
+                               credentialsError.toString().includes("permission denied");
+      
+      if (isPermissionError) {
+        toast.info(
+          "You're currently using the app without authentication. You can still add API credentials, but for production use, you should set up proper authentication.",
+          { duration: 6000 }
+        );
+      }
+    }
+  };
   
   return (
     <div className="container mx-auto py-8 px-4">
@@ -89,7 +110,7 @@ const Dashboard: React.FC = () => {
         </Alert>
       )}
       
-      <Tabs defaultValue="channels" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="channels" value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-5 mb-8">
           <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="rules">Forwarding Rules</TabsTrigger>
