@@ -1,9 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Use Deno-compatible gramjs library
-import { TelegramClient } from "https://deno.land/x/gramjs@v2.2.1/mod.ts";
-import { StringSession } from "https://deno.land/x/gramjs@v2.2.1/sessions/index.ts";
-import { Api } from "https://deno.land/x/gramjs@v2.2.1/tl/index.ts";
+// Use the GramJS library from a working CDN
+import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
+import { Api } from "https://esm.sh/telegram@2.15.5/tl";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
