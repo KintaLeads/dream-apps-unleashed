@@ -1,6 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/index.js";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,9 +22,9 @@ serve(async (req) => {
       console.error("Error parsing request body:", err);
       throw new Error("Invalid request format: " + err.message);
     });
-
+    
     const { apiId, apiHash, phoneNumber, sessionString } = body;
-
+    
     console.log("Starting Telegram client initialization");
 
     // Validate inputs

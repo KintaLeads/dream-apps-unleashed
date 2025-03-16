@@ -1,6 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/index.js";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
 
 serve(async (req) => {
   console.log("telegram-verify function called", new Date().toISOString());
