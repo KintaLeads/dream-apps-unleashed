@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // Update import paths to use a proper version and syntax for Deno
-import { TelegramClient } from "npm:telegram@2.26.22";
+import { TelegramClient } from "npm:telegram";
 import { StringSession } from "npm:telegram/sessions";
 
 const corsHeaders = {
