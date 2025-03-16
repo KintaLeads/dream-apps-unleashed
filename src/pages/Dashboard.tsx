@@ -10,12 +10,13 @@ import Settings from "@/components/telegram/Settings";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
+  const [showRlsInfo, setShowRlsInfo] = useState(false);
   
   const { data: apiCredentials, error: credentialsError } = useQuery({
     queryKey: ['dashboard-api-credentials'],
@@ -32,6 +33,12 @@ const Dashboard: React.FC = () => {
           // Don't throw an error here to avoid triggering the error state of the query
           // Instead, return an empty array and handle the error message via the warning alert
           console.warn("Will display appropriate UI warning", error.message);
+          
+          // Check if this is an RLS error
+          if (error.message.includes("row-level security") || error.message.includes("permission denied")) {
+            setShowRlsInfo(true);
+          }
+          
           return [];
         }
         
@@ -67,16 +74,11 @@ const Dashboard: React.FC = () => {
     setActiveTab(value);
     
     // If user selects settings tab and there's a permission error, show a toast with instructions
-    if (value === "settings" && credentialsError) {
-      const isPermissionError = credentialsError.toString().includes("row-level security") || 
-                               credentialsError.toString().includes("permission denied");
-      
-      if (isPermissionError) {
-        toast.info(
-          "You're currently using the app without authentication. You can still add API credentials, but for production use, you should set up proper authentication.",
-          { duration: 6000 }
-        );
-      }
+    if (value === "settings" && showRlsInfo) {
+      toast.info(
+        "You're currently using the app without authentication. You can still add API credentials, but for production use, you should set up proper authentication.",
+        { duration: 6000 }
+      );
     }
   };
   
@@ -89,7 +91,19 @@ const Dashboard: React.FC = () => {
         </p>
       </div>
       
-      {credentialsError && (
+      {showRlsInfo && (
+        <Alert className="mb-6 border-blue-300 bg-blue-50">
+          <InfoIcon className="h-4 w-4 text-blue-500" />
+          <AlertTitle className="text-blue-800">Developer Mode</AlertTitle>
+          <AlertDescription className="text-blue-700">
+            This application is running in developer mode without authentication. 
+            Some database operations may fail due to Row Level Security (RLS) policies.
+            For production use, please implement proper authentication.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {credentialsError && !showRlsInfo && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error loading account status</AlertTitle>
