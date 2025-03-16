@@ -1,7 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,6 +9,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ApiCredential = {
   id: string;
@@ -17,10 +22,38 @@ type ApiCredential = {
   api_key: string;
   api_secret: string | null;
   nickname: string | null;
+  session_data: string | null;
+  status: string | null;
 };
+
+const credentialsFormSchema = z.object({
+  nickname: z.string().optional(),
+  api_name: z.string().default("telegram"),
+  api_key: z.string().min(1, "API ID is required"),
+  api_secret: z.string().min(1, "API Hash is required"),
+});
+
+const phoneFormSchema = z.object({
+  phone_number: z.string().min(1, "Phone number is required"),
+});
+
+const verificationFormSchema = z.object({
+  verification_code: z.string().min(1, "Verification code is required"),
+});
 
 const Settings = () => {
   const [isAddingCredential, setIsAddingCredential] = useState(false);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [currentCredential, setCurrentCredential] = useState<ApiCredential | null>(null);
+  const [connectionState, setConnectionState] = useState<{
+    phoneCodeHash?: string;
+    sessionString?: string;
+    phoneNumber?: string;
+  }>({});
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   const { data: apiCredentials, isLoading, error, refetch } = useQuery({
     queryKey: ['api-credentials'],
@@ -36,11 +69,26 @@ const Settings = () => {
   });
 
   const form = useForm({
+    resolver: zodResolver(credentialsFormSchema),
     defaultValues: {
       nickname: '',
       api_name: 'telegram',
       api_key: '',
       api_secret: '',
+    }
+  });
+
+  const phoneForm = useForm({
+    resolver: zodResolver(phoneFormSchema),
+    defaultValues: {
+      phone_number: '',
+    }
+  });
+
+  const verificationForm = useForm({
+    resolver: zodResolver(verificationFormSchema),
+    defaultValues: {
+      verification_code: '',
     }
   });
 
@@ -50,7 +98,8 @@ const Settings = () => {
         api_name: values.api_name,
         api_key: values.api_key,
         api_secret: values.api_secret,
-        nickname: values.nickname,
+        nickname: values.nickname || `Telegram Account ${new Date().toLocaleDateString()}`,
+        status: 'pending',
       }]);
 
       if (error) throw error;
@@ -63,6 +112,200 @@ const Settings = () => {
       toast.error(`Error: ${error.message}`);
     }
   };
+
+  const handleConnect = async (credential: ApiCredential) => {
+    setCurrentCredential(credential);
+    setShowPhoneDialog(true);
+  };
+
+  const initiateConnection = async (values: any) => {
+    try {
+      setIsConnecting(true);
+      setConnectionStatus('connecting');
+      
+      const response = await fetch(`${window.location.origin}/functions/v1/telegram-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiId: currentCredential?.api_key,
+          apiHash: currentCredential?.api_secret,
+          phoneNumber: values.phone_number,
+          sessionString: currentCredential?.session_data || '',
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      if (result.action === 'code_requested') {
+        setConnectionState({
+          phoneCodeHash: result.phoneCodeHash,
+          sessionString: result.sessionString,
+          phoneNumber: values.phone_number,
+        });
+        setShowPhoneDialog(false);
+        setShowVerificationDialog(true);
+        toast.success('Verification code sent to your phone');
+        setConnectionStatus('verification_needed');
+      } else if (result.action === 'session_valid') {
+        // Session is already valid, update DB and close dialog
+        await updateSessionInDb(result.sessionString, 'connected');
+        setShowPhoneDialog(false);
+        toast.success('Connected to Telegram successfully');
+        setConnectionStatus('connected');
+      }
+    } catch (error: any) {
+      console.error('Connection error:', error);
+      toast.error(`Connection error: ${error.message}`);
+      setConnectionStatus('error');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const verifyCode = async (values: any) => {
+    try {
+      setIsVerifying(true);
+      setConnectionStatus('verifying');
+      
+      const response = await fetch(`${window.location.origin}/functions/v1/telegram-verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiId: currentCredential?.api_key,
+          apiHash: currentCredential?.api_secret,
+          phoneNumber: connectionState.phoneNumber,
+          phoneCodeHash: connectionState.phoneCodeHash,
+          verificationCode: values.verification_code,
+          sessionString: connectionState.sessionString,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      // Update the session string in the database
+      await updateSessionInDb(result.sessionString, 'connected');
+      
+      setShowVerificationDialog(false);
+      toast.success('Successfully authenticated with Telegram');
+      setConnectionStatus('connected');
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      toast.error(`Verification error: ${error.message}`);
+      setConnectionStatus('error');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const updateSessionInDb = async (sessionString: string, status: string) => {
+    if (!currentCredential) return;
+    
+    try {
+      const { error } = await supabase
+        .from('api_credentials')
+        .update({ 
+          session_data: sessionString,
+          status: status,
+        })
+        .eq('id', currentCredential.id);
+      
+      if (error) throw error;
+      
+      // Refresh the credentials data
+      refetch();
+    } catch (error: any) {
+      console.error('Database update error:', error);
+      toast.error(`Error updating session data: ${error.message}`);
+    }
+  };
+
+  const testConnection = async (credential: ApiCredential) => {
+    try {
+      setCurrentCredential(credential);
+      setConnectionStatus('testing');
+      
+      const response = await fetch(`${window.location.origin}/functions/v1/telegram-fetch-channels`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiId: credential.api_key,
+          apiHash: credential.api_secret,
+          sessionString: credential.session_data,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      // Update the session string in the database if it changed
+      if (result.sessionString !== credential.session_data) {
+        await updateSessionInDb(result.sessionString, 'connected');
+      }
+      
+      toast.success(`Successfully retrieved ${result.channels.length} channels`);
+      setConnectionStatus('connected');
+    } catch (error: any) {
+      console.error('Test connection error:', error);
+      toast.error(`Connection test failed: ${error.message}`);
+      setConnectionStatus('error');
+      
+      // If the session is invalid, update the status
+      await updateSessionInDb(credential.session_data || '', 'error');
+    }
+  };
+
+  const deleteCredential = async (credentialId: string) => {
+    try {
+      const { error } = await supabase
+        .from('api_credentials')
+        .delete()
+        .eq('id', credentialId);
+      
+      if (error) throw error;
+      
+      toast.success('Credential deleted successfully');
+      refetch();
+    } catch (error: any) {
+      toast.error(`Error deleting credential: ${error.message}`);
+    }
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'connected':
+        return <Badge variant="success" className="bg-green-500">Connected</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Not Connected</Badge>;
+      case 'error':
+        return <Badge variant="destructive">Error</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
+    }
+  };
+
+  // Reset connection state when dialogs are closed
+  useEffect(() => {
+    if (!showPhoneDialog && !showVerificationDialog) {
+      setConnectionState({});
+    }
+  }, [showPhoneDialog, showVerificationDialog]);
 
   return (
     <div className="space-y-8">
@@ -85,13 +328,52 @@ const Settings = () => {
               {apiCredentials.map((credential) => (
                 <Card key={credential.id} className="p-4">
                   <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium">{credential.nickname || 'Unnamed Credential'}</h3>
+                    <div className="space-y-1">
+                      <div className="flex items-center">
+                        <h3 className="font-medium">{credential.nickname || 'Unnamed Credential'}</h3>
+                        <div className="ml-2">
+                          {getStatusBadge(credential.status)}
+                        </div>
+                      </div>
                       <p className="text-sm text-muted-foreground">{credential.api_name}</p>
                     </div>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="destructive" size="sm">Delete</Button>
+                      {credential.status === 'connected' ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => testConnection(credential)}
+                          disabled={connectionStatus === 'testing'}
+                        >
+                          {connectionStatus === 'testing' ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Testing
+                            </>
+                          ) : 'Test Connection'}
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleConnect(credential)}
+                          disabled={isConnecting}
+                        >
+                          {isConnecting && currentCredential?.id === credential.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Connecting
+                            </>
+                          ) : 'Connect'}
+                        </Button>
+                      )}
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => deleteCredential(credential.id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -223,6 +505,17 @@ const Settings = () => {
             </div>
             
             <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-medium mb-2">Connection Process</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm">
+                <li>Add your API ID and Hash in the credentials section</li>
+                <li>Click "Connect" on your credential to start the authentication process</li>
+                <li>Enter your phone number (with country code, e.g., +1234567890)</li>
+                <li>Receive a verification code via Telegram and enter it when prompted</li>
+                <li>Once connected, you can test the connection to ensure it's working correctly</li>
+              </ol>
+            </div>
+            
+            <div className="p-4 bg-muted rounded-lg">
               <h3 className="font-medium mb-2">Important Notes</h3>
               <ul className="list-disc list-inside space-y-2 text-sm">
                 <li>Keep your API credentials secure and do not share them</li>
@@ -233,6 +526,108 @@ const Settings = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Phone Number Dialog */}
+      <Dialog open={showPhoneDialog} onOpenChange={setShowPhoneDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect to Telegram</DialogTitle>
+            <DialogDescription>
+              Enter your phone number to start the authentication process
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...phoneForm}>
+            <form onSubmit={phoneForm.handleSubmit(initiateConnection)} className="space-y-4">
+              <FormField
+                control={phoneForm.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1234567890" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter your phone number with country code
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowPhoneDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isConnecting}>
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : 'Connect'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Verification Code Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Telegram Code</DialogTitle>
+            <DialogDescription>
+              Enter the verification code sent to your Telegram account
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...verificationForm}>
+            <form onSubmit={verificationForm.handleSubmit(verifyCode)} className="space-y-4">
+              <FormField
+                control={verificationForm.control}
+                name="verification_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Verification Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="12345" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the 5-digit code sent to your Telegram app
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Alert variant="default" className="bg-blue-50 border-blue-200">
+                <AlertCircle className="h-4 w-4 text-blue-500" />
+                <AlertTitle className="text-blue-700">Check your Telegram app</AlertTitle>
+                <AlertDescription className="text-blue-600">
+                  The verification code has been sent to the Telegram app on your device
+                </AlertDescription>
+              </Alert>
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowVerificationDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isVerifying}>
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : 'Verify'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
