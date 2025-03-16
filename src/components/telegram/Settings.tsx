@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,7 +128,6 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsConnecting(true);
       setConnectionStatus('connecting');
       
-      // Use the correct URL format for Supabase Edge Functions
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-auth`;
       
       console.log("Calling Telegram auth function at:", functionUrl);
@@ -188,7 +186,6 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsVerifying(true);
       setConnectionStatus('verifying');
       
-      // Use the correct URL format for Supabase Edge Functions
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-verify`;
       
       const response = await fetch(functionUrl, {
@@ -235,15 +232,31 @@ const Settings: React.FC<SettingsProps> = () => {
     if (!currentCredential) return;
     
     try {
+      console.log("Updating session in database. Session length:", sessionString ? sessionString.length : 0);
+      
       const { error } = await supabase
         .from('api_credentials')
         .update({ 
           session_data: sessionString,
           status: status,
+          updated_at: new Date().toISOString()
         })
         .eq('id', currentCredential.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
+      
+      console.log("Session updated successfully with status:", status);
+      
+      setCurrentCredential({
+        ...currentCredential,
+        session_data: sessionString,
+        status: status
+      });
+      
+      refetch();
     } catch (error: any) {
       console.error('Database update error:', error);
       toast.error(`Error updating session data: ${error.message}`);
@@ -255,7 +268,6 @@ const Settings: React.FC<SettingsProps> = () => {
       setCurrentCredential(credential);
       setConnectionStatus('testing');
       
-      // Use the correct URL format for Supabase Edge Functions
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-fetch-channels`;
       
       const response = await fetch(functionUrl, {
