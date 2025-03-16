@@ -38,12 +38,16 @@ const Dashboard: React.FC = () => {
         console.error("Unexpected error in credentials fetch:", err);
         throw err;
       }
-    },
-    onError: (error) => {
-      console.error("Query error for API credentials:", error);
-      toast.error("Could not load Telegram account status. Please try refreshing the page.");
     }
   });
+  
+  // Log error to console if query fails
+  useEffect(() => {
+    if (credentialsError) {
+      console.error("Query error for API credentials:", credentialsError);
+      toast.error("Could not load Telegram account status. Please try refreshing the page.");
+    }
+  }, [credentialsError]);
   
   useEffect(() => {
     if (apiCredentials && apiCredentials.length > 0) {
