@@ -1,7 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { TelegramClient } from "npm:telegram";
-import { StringSession } from "npm:telegram/sessions";
+// Import the Telegram library directly from npm using the correct syntax for Deno
+import { TelegramClient } from "npm:telegram@2.20.15";
+import { StringSession } from "npm:telegram@2.20.15/sessions";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
