@@ -1,5 +1,7 @@
 
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import HeroSection from '@/components/HeroSection';
 import ProductShowcase from '@/components/ProductShowcase';
 import FeatureHighlights from '@/components/FeatureHighlights';
@@ -36,11 +38,18 @@ const Index: React.FC = () => {
 
   // Set page title
   useEffect(() => {
-    document.title = "Minimalist | Design Meets Innovation";
+    document.title = "Telegram Content Processor | Process and Forward Messages";
   }, []);
   
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
+      <div className="fixed top-4 right-4 z-50">
+        <Link to="/dashboard">
+          <Button>
+            Open Dashboard
+          </Button>
+        </Link>
+      </div>
       <HeroSection />
       <ProductShowcase />
       <FeatureHighlights />

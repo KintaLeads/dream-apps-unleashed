@@ -241,6 +241,178 @@ export type Database = {
           },
         ]
       }
+      telegram_forwarding_rules: {
+        Row: {
+          created_at: string
+          default_username: string
+          id: string
+          is_active: boolean
+          remove_forwarded: boolean
+          remove_links: boolean
+          remove_stickers: boolean
+          replace_usernames: boolean
+          source_channel_id: string
+          target_channel_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_username?: string
+          id?: string
+          is_active?: boolean
+          remove_forwarded?: boolean
+          remove_links?: boolean
+          remove_stickers?: boolean
+          replace_usernames?: boolean
+          source_channel_id: string
+          target_channel_id: string
+        }
+        Update: {
+          created_at?: string
+          default_username?: string
+          id?: string
+          is_active?: boolean
+          remove_forwarded?: boolean
+          remove_links?: boolean
+          remove_stickers?: boolean
+          replace_usernames?: boolean
+          source_channel_id?: string
+          target_channel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_forwarding_rules_source_channel_id_fkey"
+            columns: ["source_channel_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_source_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_forwarding_rules_target_channel_id_fkey"
+            columns: ["target_channel_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_target_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_message_logs: {
+        Row: {
+          created_at: string
+          id: string
+          links_removed: Json | null
+          processed_at: string
+          processed_text: string
+          rule_id: string
+          source_channel_id: string
+          source_text: string
+          status: string
+          target_channel_id: string
+          usernames_replaced: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          links_removed?: Json | null
+          processed_at?: string
+          processed_text: string
+          rule_id: string
+          source_channel_id: string
+          source_text: string
+          status?: string
+          target_channel_id: string
+          usernames_replaced?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          links_removed?: Json | null
+          processed_at?: string
+          processed_text?: string
+          rule_id?: string
+          source_channel_id?: string
+          source_text?: string
+          status?: string
+          target_channel_id?: string
+          usernames_replaced?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_message_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_forwarding_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_message_logs_source_channel_id_fkey"
+            columns: ["source_channel_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_source_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_message_logs_target_channel_id_fkey"
+            columns: ["target_channel_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_target_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_source_channels: {
+        Row: {
+          channel_id: string | null
+          channel_name: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          channel_id?: string | null
+          channel_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          channel_id?: string | null
+          channel_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
+      telegram_target_channels: {
+        Row: {
+          channel_id: string | null
+          channel_name: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          channel_id?: string | null
+          channel_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          channel_id?: string | null
+          channel_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
       telegram_users: {
         Row: {
           created_at: string
