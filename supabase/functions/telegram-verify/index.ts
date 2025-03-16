@@ -1,8 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Import the Telegram library directly from npm using the correct syntax for Deno
-import { TelegramClient } from "npm:telegram@2.20.15";
-import { StringSession } from "npm:telegram@2.20.15/sessions";
+// Update import paths to use a proper version and syntax for Deno
+import { TelegramClient } from "npm:telegram@2.26.22";
+import { StringSession } from "npm:telegram/sessions";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,7 +134,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "An unknown error occurred during verification",
+        error: error.message || "An unknown error occurred",
         errorDetail: error.stack || null
       }),
       { 
