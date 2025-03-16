@@ -10,18 +10,30 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("telegram-fetch-channels function called", new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { apiId, apiHash, sessionString } = await req.json();
+    const body = await req.json().catch(err => {
+      console.error("Error parsing request body:", err);
+      throw new Error("Invalid request format: " + err.message);
+    });
+    
+    const { apiId, apiHash, sessionString } = body;
     
     console.log("Starting channel fetch process");
     
     // Validate inputs
     if (!apiId || !apiHash || !sessionString) {
+      console.error("Missing required parameters", { 
+        hasApiId: !!apiId, 
+        hasApiHash: !!apiHash, 
+        hasSessionString: !!sessionString 
+      });
       throw new Error("API ID, API Hash, and valid session are required");
     }
     
@@ -39,53 +51,81 @@ serve(async (req) => {
       }
     );
     
-    console.log("Connecting to Telegram...");
-    await client.connect();
-    
-    console.log("Fetching dialogs...");
-    const dialogs = await client.getDialogs({
-      limit: 50, // Fetch up to 50 dialogs
-    });
-    
-    // Filter for channels and groups
-    const channels = dialogs
-      .filter(dialog => 
-        dialog.entity instanceof Api.Channel ||
-        dialog.entity instanceof Api.Chat
-      )
-      .map(dialog => ({
-        id: dialog.entity.id.toString(),
-        name: dialog.entity.title,
-        type: dialog.entity instanceof Api.Channel ? 
-          dialog.entity.megagroup ? 'supergroup' : 'channel' 
-          : 'group',
-        username: dialog.entity instanceof Api.Channel ? dialog.entity.username || null : null,
-        participants_count: dialog.entity instanceof Api.Channel ? dialog.entity.participantsCount || null : null
-      }));
-    
-    console.log(`Found ${channels.length} channels/groups`);
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        channels: channels,
-        sessionString: client.session.save(),
-        message: "Successfully fetched channels"
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        } 
+    try {
+      console.log("Connecting to Telegram...");
+      await client.connect();
+      console.log("Connected to Telegram API");
+      
+      console.log("Fetching dialogs...");
+      const dialogs = await client.getDialogs({
+        limit: 50, // Fetch up to 50 dialogs
+      });
+      
+      // Filter for channels and groups
+      const channels = dialogs
+        .filter(dialog => 
+          dialog.entity instanceof Api.Channel ||
+          dialog.entity instanceof Api.Chat
+        )
+        .map(dialog => ({
+          id: dialog.entity.id.toString(),
+          name: dialog.entity.title,
+          type: dialog.entity instanceof Api.Channel ? 
+            dialog.entity.megagroup ? 'supergroup' : 'channel' 
+            : 'group',
+          username: dialog.entity instanceof Api.Channel ? dialog.entity.username || null : null,
+          participants_count: dialog.entity instanceof Api.Channel ? dialog.entity.participantsCount || null : null
+        }));
+      
+      console.log(`Found ${channels.length} channels/groups`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          channels: channels,
+          sessionString: client.session.save(),
+          message: "Successfully fetched channels"
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            "Content-Type": "application/json" 
+          } 
+        }
+      );
+    } catch (clientError) {
+      console.error("Telegram client error during channel fetch:", clientError.message);
+      
+      // Handle specific telegram errors
+      const errorMessage = clientError.message || "An unknown error occurred";
+      
+      if (errorMessage.includes("AUTH_KEY_UNREGISTERED") || errorMessage.includes("SESSION_REVOKED")) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Your Telegram session has expired. Please reconnect your account in Settings.",
+            errorCode: "SESSION_EXPIRED"
+          }),
+          { 
+            status: 401,
+            headers: { 
+              ...corsHeaders,
+              "Content-Type": "application/json" 
+            } 
+          }
+        );
       }
-    );
+      
+      throw clientError;
+    }
   } catch (error) {
     console.error("Error in telegram-fetch-channels function:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "An unknown error occurred while fetching channels"
+        error: error.message || "An unknown error occurred while fetching channels",
+        errorDetail: error.stack || null
       }),
       { 
         status: 500,

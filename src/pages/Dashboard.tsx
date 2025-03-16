@@ -11,32 +11,46 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
   
-  const { data: apiCredentials } = useQuery({
+  const { data: apiCredentials, error: credentialsError } = useQuery({
     queryKey: ['dashboard-api-credentials'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('api_credentials')
-        .select('*')
-        .eq('status', 'connected');
-      
-      if (error) {
-        console.error("Error fetching credentials:", error);
-        return [];
+      try {
+        console.log("Fetching Telegram API credentials");
+        const { data, error } = await supabase
+          .from('api_credentials')
+          .select('*')
+          .eq('status', 'connected');
+        
+        if (error) {
+          console.error("Error fetching credentials:", error);
+          throw new Error(`Failed to fetch API credentials: ${error.message}`);
+        }
+        
+        console.log("Credentials fetched successfully:", data ? data.length : 0, "connected accounts found");
+        return data || [];
+      } catch (err) {
+        console.error("Unexpected error in credentials fetch:", err);
+        throw err;
       }
-      
-      return data || [];
+    },
+    onError: (error) => {
+      console.error("Query error for API credentials:", error);
+      toast.error("Could not load Telegram account status. Please try refreshing the page.");
     }
   });
   
   useEffect(() => {
     if (apiCredentials && apiCredentials.length > 0) {
+      console.log("Setting connected account status to true");
       setHasConnectedAccount(true);
     } else {
+      console.log("Setting connected account status to false");
       setHasConnectedAccount(false);
     }
   }, [apiCredentials]);
@@ -50,7 +64,18 @@ const Dashboard: React.FC = () => {
         </p>
       </div>
       
-      {!hasConnectedAccount && (
+      {credentialsError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading account status</AlertTitle>
+          <AlertDescription>
+            There was a problem checking your Telegram account status. 
+            Please refresh the page or check the Settings tab.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {!hasConnectedAccount && !credentialsError && (
         <Alert variant="destructive" className="mb-6 border-yellow-300 bg-yellow-50">
           <AlertCircle className="h-4 w-4 text-yellow-600" />
           <AlertTitle className="text-yellow-800">No connected Telegram account</AlertTitle>
