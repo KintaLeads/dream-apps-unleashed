@@ -23,6 +23,10 @@ type ApiCredential = {
   nickname: string | null;
   session_data: string | null;
   status: string | null;
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string | null;
+  api_type?: string | null;
 };
 
 const credentialsFormSchema = z.object({

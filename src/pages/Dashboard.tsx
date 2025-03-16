@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
         return [];
       }
       
-      return data;
+      return data || [];
     }
   });
   
