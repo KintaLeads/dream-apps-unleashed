@@ -10,10 +10,13 @@ import Settings from "@/components/telegram/Settings";
 import { useQuery, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, InfoIcon } from "lucide-react";
+import { AlertCircle, InfoIcon, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
-// Create a custom QueryClient that handles RLS errors gracefully
+// Create a custom QueryClient that handles errors gracefully
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,8 +29,8 @@ const queryClient = new QueryClient({
 const DashboardContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
-  const [showRlsInfo, setShowRlsInfo] = useState(false);
-  const [bypassMode, setBypassMode] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   
   const { data: apiCredentials, error: credentialsError, refetch } = useQuery({
     queryKey: ['dashboard-api-credentials'],
@@ -35,7 +38,6 @@ const DashboardContent: React.FC = () => {
       try {
         console.log("Fetching Telegram API credentials");
         
-        // First try to get credentials
         const { data, error } = await supabase
           .from('api_credentials')
           .select('*')
@@ -43,19 +45,6 @@ const DashboardContent: React.FC = () => {
         
         if (error) {
           console.error("Error fetching credentials:", error);
-          
-          // Check if this is an RLS error
-          if (error.message.includes("row-level security") || error.message.includes("permission denied")) {
-            setShowRlsInfo(true);
-            
-            // For demo purposes only, we'll set bypass mode
-            // In a real app, you would implement proper authentication
-            setBypassMode(true);
-            
-            // Return empty array to avoid breaking the UI
-            return [];
-          }
-          
           throw error;
         }
         
@@ -63,7 +52,7 @@ const DashboardContent: React.FC = () => {
         return data || [];
       } catch (err) {
         console.error("Unexpected error in credentials fetch:", err);
-        return [];
+        throw err;
       }
     }
   });
@@ -88,40 +77,34 @@ const DashboardContent: React.FC = () => {
   
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    
-    // If user selects settings tab and there's a permission error, show a toast with instructions
-    if (value === "settings" && showRlsInfo) {
-      toast.info(
-        "You're currently using the app without authentication. You can still add API credentials in demo mode.",
-        { duration: 6000 }
-      );
-    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
   };
   
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Telegram Content Processor</h1>
-        <p className="text-muted-foreground mt-2">
-          Process and forward messages from private Telegram channels
-        </p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Telegram Content Processor</h1>
+          <p className="text-muted-foreground mt-2">
+            Process and forward messages from private Telegram channels
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">
+            Logged in as: <span className="font-semibold">{user?.email}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
       </div>
       
-      {showRlsInfo && (
-        <Alert className="mb-6 border-blue-300 bg-blue-50">
-          <InfoIcon className="h-4 w-4 text-blue-500" />
-          <AlertTitle className="text-blue-800">Demo Mode Active</AlertTitle>
-          <AlertDescription className="text-blue-700">
-            This application is running in demo mode without authentication. 
-            Some database operations are simulated due to Row Level Security (RLS) policies.
-            <div className="mt-2">
-              <strong>For production use:</strong> Add authentication using Supabase Auth or another provider.
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {credentialsError && !showRlsInfo && (
+      {credentialsError && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error loading account status</AlertTitle>
@@ -168,7 +151,7 @@ const DashboardContent: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="settings" className="mt-4">
-          <Settings bypassMode={bypassMode} />
+          <Settings />
         </TabsContent>
       </Tabs>
       

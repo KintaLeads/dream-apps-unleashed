@@ -44,11 +44,9 @@ const verificationFormSchema = z.object({
   verification_code: z.string().min(1, "Verification code is required"),
 });
 
-interface SettingsProps {
-  bypassMode?: boolean;
-}
+interface SettingsProps {}
 
-const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
+const Settings: React.FC<SettingsProps> = () => {
   const [isAddingCredential, setIsAddingCredential] = useState(false);
   const [showPhoneDialog, setShowPhoneDialog] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
@@ -61,15 +59,10 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
     phoneNumber?: string;
   }>({});
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
-  const [demoCredentials, setDemoCredentials] = useState<ApiCredential[]>([]);
 
   const { data: apiCredentials, isLoading, error, refetch } = useQuery({
     queryKey: ['api-credentials'],
     queryFn: async () => {
-      if (bypassMode) {
-        return demoCredentials;
-      }
-      
       const { data, error } = await supabase.from('api_credentials').select('*');
       
       if (error) {
@@ -78,7 +71,6 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
       
       return data as ApiCredential[];
     },
-    enabled: !bypassMode || demoCredentials.length > 0,
   });
 
   const form = useForm({
@@ -107,42 +99,22 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
 
   const onSubmit = async (values: any) => {
     try {
-      const newCredential = {
-        id: crypto.randomUUID(),
+      const { error } = await supabase.from('api_credentials').insert([{
         api_name: values.api_name,
         api_key: values.api_key,
         api_secret: values.api_secret,
         nickname: values.nickname || `Telegram Account ${new Date().toLocaleDateString()}`,
         status: 'pending',
-        session_data: null,
-        created_at: new Date().toISOString(),
-      };
-      
-      if (bypassMode) {
-        setDemoCredentials([...demoCredentials, newCredential]);
-        toast.success('API credentials added successfully (Demo Mode)');
-      } else {
-        const { error } = await supabase.from('api_credentials').insert([{
-          api_name: values.api_name,
-          api_key: values.api_key,
-          api_secret: values.api_secret,
-          nickname: values.nickname || `Telegram Account ${new Date().toLocaleDateString()}`,
-          status: 'pending',
-        }]);
+      }]);
 
-        if (error) throw error;
-        toast.success('API credentials added successfully');
-      }
+      if (error) throw error;
+      toast.success('API credentials added successfully');
       
       form.reset();
       setIsAddingCredential(false);
       refetch();
     } catch (error: any) {
-      if (error.message?.includes("row-level security")) {
-        toast.error("Error adding credentials due to security restrictions. Please implement authentication for production use.");
-      } else {
-        toast.error(`Error: ${error.message}`);
-      }
+      toast.error(`Error: ${error.message}`);
     }
   };
 
@@ -155,21 +127,6 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
     try {
       setIsConnecting(true);
       setConnectionStatus('connecting');
-      
-      if (bypassMode) {
-        setTimeout(() => {
-          setConnectionState({
-            phoneCodeHash: "demo_hash_123",
-            sessionString: "demo_session_string",
-            phoneNumber: values.phone_number,
-          });
-          setShowPhoneDialog(false);
-          setShowVerificationDialog(true);
-          toast.success('Verification code sent to your phone (Demo Mode)');
-          setConnectionStatus('verification_needed');
-        }, 1500);
-        return;
-      }
       
       const response = await fetch(`${window.location.origin}/functions/v1/telegram-auth`, {
         method: 'POST',
@@ -220,17 +177,6 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
       setIsVerifying(true);
       setConnectionStatus('verifying');
       
-      if (bypassMode) {
-        setTimeout(async () => {
-          await updateSessionInDb("demo_session_updated", 'connected');
-          setShowVerificationDialog(false);
-          toast.success('Successfully authenticated with Telegram (Demo Mode)');
-          setConnectionStatus('connected');
-          setIsVerifying(false);
-        }, 1500);
-        return;
-      }
-      
       const response = await fetch(`${window.location.origin}/functions/v1/telegram-verify`, {
         method: 'POST',
         headers: {
@@ -270,32 +216,18 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
     if (!currentCredential) return;
     
     try {
-      if (bypassMode) {
-        setDemoCredentials(demoCredentials.map(cred => 
-          cred.id === currentCredential.id 
-            ? { ...cred, session_data: sessionString, status: status } 
-            : cred
-        ));
-      } else {
-        const { error } = await supabase
-          .from('api_credentials')
-          .update({ 
-            session_data: sessionString,
-            status: status,
-          })
-          .eq('id', currentCredential.id);
+      const { error } = await supabase
+        .from('api_credentials')
+        .update({ 
+          session_data: sessionString,
+          status: status,
+        })
+        .eq('id', currentCredential.id);
         
-        if (error) throw error;
-      }
-      
-      refetch();
+      if (error) throw error;
     } catch (error: any) {
       console.error('Database update error:', error);
-      if (bypassMode) {
-        toast.warning(`Demo mode: Changes would be persisted in a real database.`);
-      } else {
-        toast.error(`Error updating session data: ${error.message}`);
-      }
+      toast.error(`Error updating session data: ${error.message}`);
     }
   };
 
@@ -303,14 +235,6 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
     try {
       setCurrentCredential(credential);
       setConnectionStatus('testing');
-      
-      if (bypassMode) {
-        setTimeout(async () => {
-          toast.success(`Successfully retrieved 5 channels (Demo Mode)`);
-          setConnectionStatus('connected');
-        }, 1500);
-        return;
-      }
       
       const response = await fetch(`${window.location.origin}/functions/v1/telegram-fetch-channels`, {
         method: 'POST',
@@ -347,20 +271,13 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
 
   const deleteCredential = async (credentialId: string) => {
     try {
-      if (bypassMode) {
-        setDemoCredentials(demoCredentials.filter(cred => cred.id !== credentialId));
-        toast.success('Credential deleted successfully (Demo Mode)');
-      } else {
-        const { error } = await supabase
-          .from('api_credentials')
-          .delete()
-          .eq('id', credentialId);
+      const { error } = await supabase
+        .from('api_credentials')
+        .delete()
+        .eq('id', credentialId);
         
-        if (error) throw error;
-        toast.success('Credential deleted successfully');
-      }
-      
-      refetch();
+      if (error) throw error;
+      toast.success('Credential deleted successfully');
     } catch (error: any) {
       toast.error(`Error deleting credential: ${error.message}`);
     }
@@ -387,18 +304,6 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
 
   return (
     <div className="space-y-8">
-      {bypassMode && (
-        <Alert className="mb-6 border-amber-300 bg-amber-50">
-          <AlertCircle className="h-4 w-4 text-amber-500" />
-          <AlertTitle className="text-amber-800">Demo Mode Active</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            You're running in demo mode without database persistence.
-            Your changes will be stored in memory only for this session.
-            For production use, please implement authentication.
-          </AlertDescription>
-        </Alert>
-      )}
-    
       <Card>
         <CardHeader>
           <CardTitle>API Credentials</CardTitle>
@@ -409,7 +314,7 @@ const Settings: React.FC<SettingsProps> = ({ bypassMode = false }) => {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4">Loading credentials...</div>
-          ) : error && !bypassMode ? (
+          ) : error ? (
             <div className="text-center py-4 text-red-500">
               Error loading credentials. Please try again.
             </div>

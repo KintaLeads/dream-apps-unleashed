@@ -1,58 +1,37 @@
 
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import HeroSection from '@/components/HeroSection';
-import ProductShowcase from '@/components/ProductShowcase';
-import FeatureHighlights from '@/components/FeatureHighlights';
-import Newsletter from '@/components/Newsletter';
-import Footer from '@/components/Footer';
+import React from "react";
+import { Link } from "react-router-dom";
+import HeroSection from "@/components/HeroSection";
+import FeatureHighlights from "@/components/FeatureHighlights";
+import ProductShowcase from "@/components/ProductShowcase";
+import Newsletter from "@/components/Newsletter";
+import Footer from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index: React.FC = () => {
-  // Initialize animation observers for scroll animations
-  useEffect(() => {
-    const handleScroll = () => {
-      const animatedElements = document.querySelectorAll('.animate-on-scroll');
-      
-      animatedElements.forEach((element) => {
-        const elementPosition = element.getBoundingClientRect().top;
-        const windowHeight = window.innerHeight;
-        
-        if (elementPosition < windowHeight * 0.85) {
-          element.classList.add('visible');
-        }
-      });
-    };
-    
-    // Initial check for elements in viewport
-    handleScroll();
-    
-    // Add scroll event listener
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  // Set page title
-  useEffect(() => {
-    document.title = "Telegram Content Processor | Process and Forward Messages";
-  }, []);
+  const { user } = useAuth();
   
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
-      <div className="fixed top-4 right-4 z-50">
-        <Link to="/dashboard">
-          <Button>
-            Open Dashboard
-          </Button>
-        </Link>
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <header className="container mx-auto py-4 px-4 flex justify-between items-center">
+        <div className="text-2xl font-bold">Telegram Content Processor</div>
+        <div>
+          {user ? (
+            <Link to="/dashboard">
+              <Button>Go to Dashboard</Button>
+            </Link>
+          ) : (
+            <Link to="/auth">
+              <Button>Login / Signup</Button>
+            </Link>
+          )}
+        </div>
+      </header>
+      
       <HeroSection />
-      <ProductShowcase />
       <FeatureHighlights />
+      <ProductShowcase />
       <Newsletter />
       <Footer />
     </div>
