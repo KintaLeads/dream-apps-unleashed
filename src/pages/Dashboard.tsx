@@ -51,7 +51,7 @@ const Dashboard: React.FC = () => {
       </div>
       
       {!hasConnectedAccount && (
-        <Alert variant="warning" className="mb-6 border-yellow-300 bg-yellow-50">
+        <Alert variant="destructive" className="mb-6 border-yellow-300 bg-yellow-50">
           <AlertCircle className="h-4 w-4 text-yellow-600" />
           <AlertTitle className="text-yellow-800">No connected Telegram account</AlertTitle>
           <AlertDescription className="text-yellow-700">

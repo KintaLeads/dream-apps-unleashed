@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -153,7 +152,6 @@ const Settings = () => {
         toast.success('Verification code sent to your phone');
         setConnectionStatus('verification_needed');
       } else if (result.action === 'session_valid') {
-        // Session is already valid, update DB and close dialog
         await updateSessionInDb(result.sessionString, 'connected');
         setShowPhoneDialog(false);
         toast.success('Connected to Telegram successfully');
@@ -194,7 +192,6 @@ const Settings = () => {
         throw new Error(result.error);
       }
       
-      // Update the session string in the database
       await updateSessionInDb(result.sessionString, 'connected');
       
       setShowVerificationDialog(false);
@@ -223,7 +220,6 @@ const Settings = () => {
       
       if (error) throw error;
       
-      // Refresh the credentials data
       refetch();
     } catch (error: any) {
       console.error('Database update error:', error);
@@ -254,7 +250,6 @@ const Settings = () => {
         throw new Error(result.error);
       }
       
-      // Update the session string in the database if it changed
       if (result.sessionString !== credential.session_data) {
         await updateSessionInDb(result.sessionString, 'connected');
       }
@@ -266,7 +261,6 @@ const Settings = () => {
       toast.error(`Connection test failed: ${error.message}`);
       setConnectionStatus('error');
       
-      // If the session is invalid, update the status
       await updateSessionInDb(credential.session_data || '', 'error');
     }
   };
@@ -290,7 +284,7 @@ const Settings = () => {
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'connected':
-        return <Badge variant="success" className="bg-green-500">Connected</Badge>;
+        return <Badge variant="outline" className="bg-green-500 text-white">Connected</Badge>;
       case 'pending':
         return <Badge variant="secondary">Not Connected</Badge>;
       case 'error':
@@ -300,7 +294,6 @@ const Settings = () => {
     }
   };
 
-  // Reset connection state when dialogs are closed
   useEffect(() => {
     if (!showPhoneDialog && !showVerificationDialog) {
       setConnectionState({});
@@ -527,7 +520,6 @@ const Settings = () => {
         </CardContent>
       </Card>
       
-      {/* Phone Number Dialog */}
       <Dialog open={showPhoneDialog} onOpenChange={setShowPhoneDialog}>
         <DialogContent>
           <DialogHeader>
@@ -574,7 +566,6 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Verification Code Dialog */}
       <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
         <DialogContent>
           <DialogHeader>
