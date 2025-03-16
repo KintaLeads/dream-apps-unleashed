@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { TelegramClient } from "https://esm.sh/telegram@2.15.5/mod.mjs";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/StringSession.mjs";
+import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
 import { Api } from "https://esm.sh/telegram@2.15.5/tl";
 
 const corsHeaders = {
