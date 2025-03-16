@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
+import { TelegramClient } from "https://esm.sh/telegram@2.15.5/mod.mjs";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/StringSession.mjs";
 
 serve(async (req) => {
   console.log("telegram-verify function called", new Date().toISOString());
@@ -26,10 +26,21 @@ serve(async (req) => {
       throw new Error("Missing required verification parameters");
     }
 
-    const stringSession = new StringSession(sessionString || "");
-    const client = new TelegramClient(stringSession, parseInt(apiId), apiHash, {
-      connectionRetries: 5,
-    });
+    // Ensure sessionString is always a string
+    const storedSession = sessionString || "";
+    const stringSession = new StringSession(storedSession);
+    
+    console.log("Initializing Telegram client with session length:", storedSession.length);
+    
+    const client = new TelegramClient(
+      stringSession,
+      Number(apiId),
+      apiHash,
+      {
+        connectionRetries: 5,
+        useWSS: true,
+      }
+    );
 
     await client.connect();
     console.log("Connected to Telegram API");

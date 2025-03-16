@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
+import { TelegramClient } from "https://esm.sh/telegram@2.15.5/mod.mjs";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/StringSession.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +12,6 @@ const corsHeaders = {
 serve(async (req) => {
   console.log("telegram-auth function called", new Date().toISOString());
 
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -33,22 +32,35 @@ serve(async (req) => {
       throw new Error("API ID and API Hash are required");
     }
 
-    // Use existing session or create a new one
-    const stringSession = new StringSession(sessionString || ""); // Ensure valid session format
+    // Ensure sessionString is always a string
+    const storedSession = sessionString || "";
+    const stringSession = new StringSession(storedSession);
+    
+    console.log("Initializing Telegram client with session length:", storedSession.length);
 
     // Initialize the Telegram Client
-    const client = new TelegramClient(stringSession, parseInt(apiId), apiHash, {
-      connectionRetries: 5,
-    });
+    const client = new TelegramClient(
+      stringSession,
+      Number(apiId),
+      apiHash,
+      {
+        connectionRetries: 5,
+        useWSS: true,
+      }
+    );
 
     try {
       await client.connect();
       console.log("Connected to Telegram API");
 
-      if (!sessionString) {
+      if (!storedSession) {
+        if (!phoneNumber) {
+          throw new Error("Phone number is required for initial login");
+        }
+        
         console.log("New login: Sending verification code...");
         const result = await client.sendCode({
-          apiId: parseInt(apiId),
+          apiId: Number(apiId),
           apiHash: apiHash,
         }, phoneNumber);
 

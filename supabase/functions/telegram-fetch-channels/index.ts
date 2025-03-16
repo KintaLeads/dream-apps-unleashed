@@ -1,8 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Use the correct import path for StringSession
-import { TelegramClient } from "https://esm.sh/telegram@2.15.5";
-import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions";
+import { TelegramClient } from "https://esm.sh/telegram@2.15.5/mod.mjs";
+import { StringSession } from "https://esm.sh/telegram@2.15.5/sessions/StringSession.mjs";
 import { Api } from "https://esm.sh/telegram@2.15.5/tl";
 
 const corsHeaders = {
@@ -42,13 +41,15 @@ serve(async (req) => {
       throw new Error("API ID, API Hash, and valid session are required");
     }
     
+    console.log("Initializing Telegram client with session length:", sessionString.length);
+    
     // Initialize session from string
     const stringSession = new StringSession(sessionString);
     
     // Initialize the client
     const client = new TelegramClient(
       stringSession,
-      parseInt(apiId),
+      Number(apiId),
       apiHash,
       { 
         connectionRetries: 5,
