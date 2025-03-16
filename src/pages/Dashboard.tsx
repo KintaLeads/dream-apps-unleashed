@@ -7,22 +7,35 @@ import ForwardingRules from "@/components/telegram/ForwardingRules";
 import MessageProcessor from "@/components/telegram/MessageProcessor";
 import ProcessingHistory from "@/components/telegram/ProcessingHistory";
 import Settings from "@/components/telegram/Settings";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
 
-const Dashboard: React.FC = () => {
+// Create a custom QueryClient that handles RLS errors gracefully
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const DashboardContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
   const [showRlsInfo, setShowRlsInfo] = useState(false);
+  const [bypassMode, setBypassMode] = useState(false);
   
-  const { data: apiCredentials, error: credentialsError } = useQuery({
+  const { data: apiCredentials, error: credentialsError, refetch } = useQuery({
     queryKey: ['dashboard-api-credentials'],
     queryFn: async () => {
       try {
         console.log("Fetching Telegram API credentials");
+        
+        // First try to get credentials
         const { data, error } = await supabase
           .from('api_credentials')
           .select('*')
@@ -30,23 +43,26 @@ const Dashboard: React.FC = () => {
         
         if (error) {
           console.error("Error fetching credentials:", error);
-          // Don't throw an error here to avoid triggering the error state of the query
-          // Instead, return an empty array and handle the error message via the warning alert
-          console.warn("Will display appropriate UI warning", error.message);
           
           // Check if this is an RLS error
           if (error.message.includes("row-level security") || error.message.includes("permission denied")) {
             setShowRlsInfo(true);
+            
+            // For demo purposes only, we'll set bypass mode
+            // In a real app, you would implement proper authentication
+            setBypassMode(true);
+            
+            // Return empty array to avoid breaking the UI
+            return [];
           }
           
-          return [];
+          throw error;
         }
         
         console.log("Credentials fetched successfully:", data ? data.length : 0, "connected accounts found");
         return data || [];
       } catch (err) {
         console.error("Unexpected error in credentials fetch:", err);
-        // Return empty array instead of throwing to avoid breaking the UI
         return [];
       }
     }
@@ -76,7 +92,7 @@ const Dashboard: React.FC = () => {
     // If user selects settings tab and there's a permission error, show a toast with instructions
     if (value === "settings" && showRlsInfo) {
       toast.info(
-        "You're currently using the app without authentication. You can still add API credentials, but for production use, you should set up proper authentication.",
+        "You're currently using the app without authentication. You can still add API credentials in demo mode.",
         { duration: 6000 }
       );
     }
@@ -94,11 +110,13 @@ const Dashboard: React.FC = () => {
       {showRlsInfo && (
         <Alert className="mb-6 border-blue-300 bg-blue-50">
           <InfoIcon className="h-4 w-4 text-blue-500" />
-          <AlertTitle className="text-blue-800">Developer Mode</AlertTitle>
+          <AlertTitle className="text-blue-800">Demo Mode Active</AlertTitle>
           <AlertDescription className="text-blue-700">
-            This application is running in developer mode without authentication. 
-            Some database operations may fail due to Row Level Security (RLS) policies.
-            For production use, please implement proper authentication.
+            This application is running in demo mode without authentication. 
+            Some database operations are simulated due to Row Level Security (RLS) policies.
+            <div className="mt-2">
+              <strong>For production use:</strong> Add authentication using Supabase Auth or another provider.
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -150,12 +168,21 @@ const Dashboard: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="settings" className="mt-4">
-          <Settings />
+          <Settings bypassMode={bypassMode} />
         </TabsContent>
       </Tabs>
       
       <Toaster />
     </div>
+  );
+};
+
+// Wrap the dashboard content with the QueryClientProvider
+const Dashboard: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DashboardContent />
+    </QueryClientProvider>
   );
 };
 
