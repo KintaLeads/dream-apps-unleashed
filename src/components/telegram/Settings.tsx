@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,10 +129,16 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsConnecting(true);
       setConnectionStatus('connecting');
       
-      const response = await fetch(`${window.location.origin}/functions/v1/telegram-auth`, {
+      // Use the correct URL format for Supabase Edge Functions
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-auth`;
+      
+      console.log("Calling Telegram auth function at:", functionUrl);
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
         },
         body: JSON.stringify({
           apiId: currentCredential?.api_key,
@@ -140,6 +147,10 @@ const Settings: React.FC<SettingsProps> = () => {
           sessionString: currentCredential?.session_data || '',
         }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Function returned status: ${response.status}`);
+      }
       
       const result = await response.json();
       
@@ -177,10 +188,14 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsVerifying(true);
       setConnectionStatus('verifying');
       
-      const response = await fetch(`${window.location.origin}/functions/v1/telegram-verify`, {
+      // Use the correct URL format for Supabase Edge Functions
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-verify`;
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
         },
         body: JSON.stringify({
           apiId: currentCredential?.api_key,
@@ -191,6 +206,10 @@ const Settings: React.FC<SettingsProps> = () => {
           sessionString: connectionState.sessionString,
         }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Function returned status: ${response.status}`);
+      }
       
       const result = await response.json();
       
@@ -236,10 +255,14 @@ const Settings: React.FC<SettingsProps> = () => {
       setCurrentCredential(credential);
       setConnectionStatus('testing');
       
-      const response = await fetch(`${window.location.origin}/functions/v1/telegram-fetch-channels`, {
+      // Use the correct URL format for Supabase Edge Functions
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-fetch-channels`;
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
         },
         body: JSON.stringify({
           apiId: credential.api_key,
@@ -247,6 +270,10 @@ const Settings: React.FC<SettingsProps> = () => {
           sessionString: credential.session_data,
         }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Function returned status: ${response.status}`);
+      }
       
       const result = await response.json();
       
@@ -278,6 +305,7 @@ const Settings: React.FC<SettingsProps> = () => {
         
       if (error) throw error;
       toast.success('Credential deleted successfully');
+      refetch();
     } catch (error: any) {
       toast.error(`Error deleting credential: ${error.message}`);
     }
