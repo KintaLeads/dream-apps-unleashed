@@ -17,6 +17,13 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 
+type ApiCredential = {
+  id: string;
+  nickname: string;
+  api_name: string;
+  status: string;
+};
+
 type SourceChannel = {
   id: string;
   channel_name: string;
@@ -37,6 +44,7 @@ type ForwardingRule = {
   remove_forwarded: boolean;
   default_username: string;
   is_active: boolean;
+  api_credential_id: string | null;
   source_channel?: SourceChannel;
   target_channel?: TargetChannel;
 };
@@ -54,7 +62,8 @@ const ForwardingRules: React.FC = () => {
     remove_stickers: true,
     remove_forwarded: true,
     default_username: '@channel_user',
-    is_active: true
+    is_active: true,
+    api_credential_id: null
   });
 
   // Query to fetch forwarding rules
@@ -103,6 +112,21 @@ const ForwardingRules: React.FC = () => {
     }
   });
 
+  // Query to fetch API credentials for dropdown
+  const { data: apiCredentials, isLoading: isLoadingApiCredentials } = useQuery({
+    queryKey: ['apiCredentials'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('api_credentials')
+        .select('id, nickname, api_name, status')
+        .eq('status', 'connected')
+        .order('nickname', { ascending: true });
+      
+      if (error) throw error;
+      return data as ApiCredential[];
+    }
+  });
+
   // Mutation to add a new rule
   const addRuleMutation = useMutation({
     mutationFn: async (rule: Omit<ForwardingRule, 'id' | 'source_channel' | 'target_channel'>) => {
@@ -125,7 +149,8 @@ const ForwardingRules: React.FC = () => {
         remove_stickers: true,
         remove_forwarded: true,
         default_username: '@channel_user',
-        is_active: true
+        is_active: true,
+        api_credential_id: null
       });
       toast.success('Forwarding rule added successfully');
     },
@@ -147,7 +172,8 @@ const ForwardingRules: React.FC = () => {
           remove_stickers: rule.remove_stickers,
           remove_forwarded: rule.remove_forwarded,
           default_username: rule.default_username,
-          is_active: rule.is_active
+          is_active: rule.is_active,
+          api_credential_id: rule.api_credential_id
         })
         .eq('id', rule.id)
         .select();
@@ -218,6 +244,13 @@ const ForwardingRules: React.FC = () => {
     });
   };
 
+  // Helper function to get credential nickname
+  const getCredentialNickname = (credentialId: string | null) => {
+    if (!credentialId || !apiCredentials) return "No account selected";
+    const credential = apiCredentials.find(cred => cred.id === credentialId);
+    return credential?.nickname || "Unknown account";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -231,6 +264,32 @@ const ForwardingRules: React.FC = () => {
         <div className="bg-card p-4 rounded-lg border mb-6">
           <h3 className="text-lg font-medium mb-4">Add New Forwarding Rule</h3>
           <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="api_credential">Telegram Account *</Label>
+                <Select 
+                  value={newRule.api_credential_id || ''} 
+                  onValueChange={(value) => setNewRule({...newRule, api_credential_id: value || null})}
+                >
+                  <SelectTrigger id="api_credential">
+                    <SelectValue placeholder="Select Telegram Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiCredentials?.map(credential => (
+                      <SelectItem key={credential.id} value={credential.id}>
+                        {credential.nickname || credential.api_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {apiCredentials?.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No connected accounts found. Connect a Telegram account in Settings first.
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="source_channel">Source Channel *</Label>
@@ -326,7 +385,8 @@ const ForwardingRules: React.FC = () => {
                   remove_stickers: true,
                   remove_forwarded: true,
                   default_username: '@channel_user',
-                  is_active: true
+                  is_active: true,
+                  api_credential_id: null
                 });
               }}>
                 Cancel
@@ -339,13 +399,14 @@ const ForwardingRules: React.FC = () => {
         </div>
       )}
 
-      {isLoadingRules || isLoadingSourceChannels || isLoadingTargetChannels ? (
+      {isLoadingRules || isLoadingSourceChannels || isLoadingTargetChannels || isLoadingApiCredentials ? (
         <div className="text-center p-4">Loading rules...</div>
       ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Telegram Account</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Target</TableHead>
                 <TableHead>Processing Options</TableHead>
@@ -357,6 +418,27 @@ const ForwardingRules: React.FC = () => {
               {rules && rules.length > 0 ? (
                 rules.map(rule => (
                   <TableRow key={rule.id} className={!rule.is_active ? "opacity-50" : ""}>
+                    <TableCell>
+                      {editingRule?.id === rule.id ? (
+                        <Select 
+                          value={editingRule.api_credential_id || ''} 
+                          onValueChange={(value) => setEditingRule({...editingRule, api_credential_id: value || null})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Telegram Account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apiCredentials?.map(credential => (
+                              <SelectItem key={credential.id} value={credential.id}>
+                                {credential.nickname || credential.api_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getCredentialNickname(rule.api_credential_id)
+                      )}
+                    </TableCell>
                     <TableCell>
                       {editingRule?.id === rule.id ? (
                         <Select 
@@ -468,7 +550,7 @@ const ForwardingRules: React.FC = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={6} className="text-center">
                     No forwarding rules found. Add one to get started.
                   </TableCell>
                 </TableRow>

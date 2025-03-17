@@ -25,6 +25,7 @@ const queryClient = new QueryClient({
 const DashboardContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
+  const [hasUnassignedRules, setHasUnassignedRules] = useState(false);
   
   const { data: apiCredentials, error: credentialsError, refetch } = useQuery({
     queryKey: ['dashboard-api-credentials'],
@@ -51,6 +52,22 @@ const DashboardContent: React.FC = () => {
     }
   });
   
+  // Check for rules without API credential assigned
+  const { data: unassignedRules } = useQuery({
+    queryKey: ['unassigned-rules'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('telegram_forwarding_rules')
+        .select('id')
+        .is('api_credential_id', null)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: hasConnectedAccount // Only run this query if there's at least one connected account
+  });
+
   // Log error to console if query fails
   useEffect(() => {
     if (credentialsError) {
@@ -68,6 +85,14 @@ const DashboardContent: React.FC = () => {
       setHasConnectedAccount(false);
     }
   }, [apiCredentials]);
+
+  useEffect(() => {
+    if (unassignedRules && unassignedRules.length > 0) {
+      setHasUnassignedRules(true);
+    } else {
+      setHasUnassignedRules(false);
+    }
+  }, [unassignedRules]);
   
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -101,6 +126,17 @@ const DashboardContent: React.FC = () => {
           <AlertTitle className="text-yellow-800">No connected Telegram account</AlertTitle>
           <AlertDescription className="text-yellow-700">
             Please connect your Telegram account in the Settings tab to use all features of this application.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {hasUnassignedRules && (
+        <Alert variant="warning" className="mb-6 border-amber-300 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Unassigned forwarding rules detected</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            You have active forwarding rules without a Telegram account assigned. 
+            Please edit these rules in the Forwarding Rules tab and assign an account to each rule.
           </AlertDescription>
         </Alert>
       )}

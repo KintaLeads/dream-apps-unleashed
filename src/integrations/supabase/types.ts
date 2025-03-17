@@ -249,6 +249,7 @@ export type Database = {
       }
       telegram_forwarding_rules: {
         Row: {
+          api_credential_id: string | null
           created_at: string
           default_username: string
           id: string
@@ -261,6 +262,7 @@ export type Database = {
           target_channel_id: string
         }
         Insert: {
+          api_credential_id?: string | null
           created_at?: string
           default_username?: string
           id?: string
@@ -273,6 +275,7 @@ export type Database = {
           target_channel_id: string
         }
         Update: {
+          api_credential_id?: string | null
           created_at?: string
           default_username?: string
           id?: string
@@ -285,6 +288,13 @@ export type Database = {
           target_channel_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "telegram_forwarding_rules_api_credential_id_fkey"
+            columns: ["api_credential_id"]
+            isOneToOne: false
+            referencedRelation: "api_credentials"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "telegram_forwarding_rules_source_channel_id_fkey"
             columns: ["source_channel_id"]
