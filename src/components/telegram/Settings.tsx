@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { telegramApi } from "@/integrations/external-api/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -128,29 +129,14 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsConnecting(true);
       setConnectionStatus('connecting');
       
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-auth`;
+      console.log("Initiating connection to Telegram via external API");
       
-      console.log("Calling Telegram auth function at:", functionUrl);
-      
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
-        },
-        body: JSON.stringify({
-          apiId: currentCredential?.api_key,
-          apiHash: currentCredential?.api_secret,
-          phoneNumber: values.phone_number,
-          sessionString: currentCredential?.session_data || '',
-        }),
+      const result = await telegramApi.authenticate({
+        apiId: currentCredential?.api_key || '',
+        apiHash: currentCredential?.api_secret || '',
+        phoneNumber: values.phone_number,
+        sessionString: currentCredential?.session_data || '',
       });
-      
-      if (!response.ok) {
-        throw new Error(`Function returned status: ${response.status}`);
-      }
-      
-      const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error);
@@ -186,29 +172,16 @@ const Settings: React.FC<SettingsProps> = () => {
       setIsVerifying(true);
       setConnectionStatus('verifying');
       
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-verify`;
+      console.log("Verifying Telegram code via external API");
       
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
-        },
-        body: JSON.stringify({
-          apiId: currentCredential?.api_key,
-          apiHash: currentCredential?.api_secret,
-          phoneNumber: connectionState.phoneNumber,
-          phoneCodeHash: connectionState.phoneCodeHash,
-          verificationCode: values.verification_code,
-          sessionString: connectionState.sessionString,
-        }),
+      const result = await telegramApi.verifyCode({
+        apiId: currentCredential?.api_key || '',
+        apiHash: currentCredential?.api_secret || '',
+        phoneNumber: connectionState.phoneNumber || '',
+        phoneCodeHash: connectionState.phoneCodeHash || '',
+        verificationCode: values.verification_code,
+        sessionString: connectionState.sessionString,
       });
-      
-      if (!response.ok) {
-        throw new Error(`Function returned status: ${response.status}`);
-      }
-      
-      const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error);
@@ -268,26 +241,13 @@ const Settings: React.FC<SettingsProps> = () => {
       setCurrentCredential(credential);
       setConnectionStatus('testing');
       
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://eswfrzdqxsaizkdswxfn.supabase.co'}/functions/v1/telegram-fetch-channels`;
+      console.log("Testing connection via external API");
       
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token : ''}`
-        },
-        body: JSON.stringify({
-          apiId: credential.api_key,
-          apiHash: credential.api_secret,
-          sessionString: credential.session_data,
-        }),
+      const result = await telegramApi.fetchChannels({
+        apiId: credential.api_key,
+        apiHash: credential.api_secret || '',
+        sessionString: credential.session_data || '',
       });
-      
-      if (!response.ok) {
-        throw new Error(`Function returned status: ${response.status}`);
-      }
-      
-      const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.error);

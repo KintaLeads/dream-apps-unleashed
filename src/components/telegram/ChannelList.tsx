@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Pencil, X, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { telegramApi } from "@/integrations/external-api/client";
 
 type Channel = {
   id: string;
@@ -29,7 +29,6 @@ const ChannelList: React.FC = () => {
 
   const tableName = channelType === 'source' ? 'telegram_source_channels' : 'telegram_target_channels';
 
-  // Query to fetch channels
   const { data: channels, isLoading } = useQuery({
     queryKey: ['channels', channelType],
     queryFn: async () => {
@@ -43,7 +42,6 @@ const ChannelList: React.FC = () => {
     }
   });
 
-  // Mutation to add a new channel
   const addChannelMutation = useMutation({
     mutationFn: async (newChannel: Omit<Channel, 'id' | 'is_active'>) => {
       const { data, error } = await supabase
@@ -65,7 +63,6 @@ const ChannelList: React.FC = () => {
     }
   });
 
-  // Mutation to update a channel
   const updateChannelMutation = useMutation({
     mutationFn: async (channel: Channel) => {
       const { data, error } = await supabase
@@ -91,7 +88,6 @@ const ChannelList: React.FC = () => {
     }
   });
 
-  // Mutation to delete a channel
   const deleteChannelMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
