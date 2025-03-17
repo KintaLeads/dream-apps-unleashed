@@ -9,11 +9,8 @@ import Settings from "@/components/telegram/Settings";
 import { useQuery, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, InfoIcon, LogOut } from "lucide-react";
+import { AlertCircle, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 
 // Create a custom QueryClient that handles errors gracefully
 const queryClient = new QueryClient({
@@ -28,8 +25,6 @@ const queryClient = new QueryClient({
 const DashboardContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState("channels");
   const [hasConnectedAccount, setHasConnectedAccount] = useState(false);
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   
   const { data: apiCredentials, error: credentialsError, refetch } = useQuery({
     queryKey: ['dashboard-api-credentials'],
@@ -77,11 +72,6 @@ const DashboardContent: React.FC = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
   
   return (
     <div className="container mx-auto py-8 px-4">
@@ -91,15 +81,6 @@ const DashboardContent: React.FC = () => {
           <p className="text-muted-foreground mt-2">
             Process and forward messages from private Telegram channels
           </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Logged in as: <span className="font-semibold">{user?.email}</span>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
         </div>
       </div>
       
