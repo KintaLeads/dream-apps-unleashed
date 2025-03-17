@@ -1,9 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { 
   Table, 
   TableBody, 
@@ -46,8 +45,6 @@ type MessageLog = {
 };
 
 const ProcessingHistory: React.FC = () => {
-  const [selectedLog, setSelectedLog] = useState<MessageLog | null>(null);
-
   // Query to fetch message logs
   const { data: logs, isLoading } = useQuery({
     queryKey: ['messageLogs'],
@@ -84,7 +81,7 @@ const ProcessingHistory: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Processing History</h2>
+      <h2 className="text-xl font-semibold">Message History</h2>
       
       {isLoading ? (
         <div className="text-center p-4">Loading history...</div>
@@ -122,7 +119,6 @@ const ProcessingHistory: React.FC = () => {
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => setSelectedLog(log)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -136,24 +132,10 @@ const ProcessingHistory: React.FC = () => {
                           </DialogHeader>
                           
                           <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                              <Label>Source Channel</Label>
-                              <div className="text-sm p-2 bg-muted rounded">
-                                {log.source_channel?.channel_name || 'Unknown'}
-                              </div>
-                            </div>
-                            
-                            <div className="grid gap-2">
-                              <Label>Target Channel</Label>
-                              <div className="text-sm p-2 bg-muted rounded">
-                                {log.target_channel?.channel_name || 'Unknown'}
-                              </div>
-                            </div>
-                            
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                  <Label>Original Text</Label>
+                                  <p className="text-sm font-medium">Original Text</p>
                                   <Button 
                                     size="sm" 
                                     variant="ghost"
@@ -169,7 +151,7 @@ const ProcessingHistory: React.FC = () => {
                               
                               <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                  <Label>Processed Text</Label>
+                                  <p className="text-sm font-medium">Processed Text</p>
                                   <Button 
                                     size="sm" 
                                     variant="ghost"
@@ -183,32 +165,6 @@ const ProcessingHistory: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                            
-                            {log.usernames_replaced && log.usernames_replaced.length > 0 && (
-                              <div className="grid gap-2">
-                                <Label>Replaced Usernames</Label>
-                                <div className="text-sm p-2 bg-muted rounded">
-                                  {log.usernames_replaced.map((username, index) => (
-                                    <span key={index} className="inline-block m-1 px-2 py-1 bg-background rounded-full text-xs">
-                                      {username} → {log.rule?.default_username}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {log.links_removed && log.links_removed.length > 0 && (
-                              <div className="grid gap-2">
-                                <Label>Removed Links</Label>
-                                <div className="text-sm p-2 bg-muted rounded max-h-20 overflow-y-auto">
-                                  {log.links_removed.map((link, index) => (
-                                    <div key={index} className="truncate text-xs mb-1">
-                                      {link}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -226,7 +182,7 @@ const ProcessingHistory: React.FC = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">
-                    No processing history found. Process a message to see it here.
+                    No message history found.
                   </TableCell>
                 </TableRow>
               )}
