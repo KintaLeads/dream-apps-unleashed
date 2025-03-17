@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import ChannelList from "@/components/telegram/ChannelList";
 import ForwardingRules from "@/components/telegram/ForwardingRules";
-import MessageProcessor from "@/components/telegram/MessageProcessor";
 import ProcessingHistory from "@/components/telegram/ProcessingHistory";
 import Settings from "@/components/telegram/Settings";
 import { useQuery, QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -126,10 +125,9 @@ const DashboardContent: React.FC = () => {
       )}
       
       <Tabs defaultValue="channels" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid grid-cols-5 mb-8">
+        <TabsList className="grid grid-cols-4 mb-8">
           <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="rules">Forwarding Rules</TabsTrigger>
-          <TabsTrigger value="processor">Message Processor</TabsTrigger>
           <TabsTrigger value="history">Processing History</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -140,10 +138,6 @@ const DashboardContent: React.FC = () => {
         
         <TabsContent value="rules" className="mt-4">
           <ForwardingRules />
-        </TabsContent>
-        
-        <TabsContent value="processor" className="mt-4">
-          <MessageProcessor />
         </TabsContent>
         
         <TabsContent value="history" className="mt-4">
