@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
@@ -131,10 +130,10 @@ const DashboardContent: React.FC = () => {
       )}
 
       {hasUnassignedRules && (
-        <Alert variant="warning" className="mb-6 border-amber-300 bg-amber-50">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Unassigned forwarding rules detected</AlertTitle>
-          <AlertDescription className="text-amber-700">
+        <Alert variant="warning" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Unassigned forwarding rules detected</AlertTitle>
+          <AlertDescription>
             You have active forwarding rules without a Telegram account assigned. 
             Please edit these rules in the Forwarding Rules tab and assign an account to each rule.
           </AlertDescription>
